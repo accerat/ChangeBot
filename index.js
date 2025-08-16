@@ -20,17 +20,6 @@ import {
   ChannelType,
 } from 'discord.js';
 
-// show me the discord token at startup
-console.log('[boot]', {
-  botTag: client?.user?.tag ?? 'starting…',
-  envTokenTail: (process.env.DISCORD_TOKEN || process.env.UHC_DISCORD_TOKEN || '').slice(-8),
-});
-client.once('ready', () => {
-  console.log('[ready]', {
-    botTag: client.user.tag,
-    botId: client.user.id,
-  });
-});
 // -------- ENV --------
 const {
   UHC_DISCORD_TOKEN,
