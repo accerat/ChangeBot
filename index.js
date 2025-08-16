@@ -20,6 +20,17 @@ import {
   ChannelType,
 } from 'discord.js';
 
+// show me the discord token at startup
+console.log('[boot]', {
+  botTag: client?.user?.tag ?? 'starting…',
+  envTokenTail: (process.env.DISCORD_TOKEN || process.env.UHC_DISCORD_TOKEN || '').slice(-8),
+});
+client.once('ready', () => {
+  console.log('[ready]', {
+    botTag: client.user.tag,
+    botId: client.user.id,
+  });
+});
 // -------- ENV --------
 const {
   UHC_DISCORD_TOKEN,
@@ -78,7 +89,24 @@ client.on('error', (e) => console.error('[client error]', e));
 
 // -------- Keepalive /health --------
 const app = express();
-app.get('/health', async (_req, res) => {
+// Return 200 for HEAD /health (no body)
+app.head('/health', (_req, res) => {
+  res.status(200).end();
+});
+
+// Optional: also 200 for HEAD /
+app.head('/', (_req, res) => {
+  res.status(200).end();
+});
+
+// Keep GET / as 200 too (optional but handy)
+app.get('/', (_req, res) => {
+  res.status(200).send('ok');
+});
+
+// Existing GET /health (leave as-is or keep it minimal)
+app.get('/health', (_req, res) => {
+  // Avoid heavy work here; UptimeRobot just needs a 200
   res.status(200).json({
     service: 'UHCmaterialbot',
     logged_in_as: client.user ? `${client.user.tag} (${client.user.id})` : null,
@@ -87,6 +115,7 @@ app.get('/health', async (_req, res) => {
     ws_ping_ms: client.ws?.ping ?? null,
   });
 });
+
 http.createServer(app).listen(PORT, () => console.log('HTTP keepalive listening on', PORT));
 
 // -------- Helpers --------
