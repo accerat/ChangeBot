@@ -1,8 +1,6 @@
 // index.js — UHCmaterialbot (mention flow; single-field modal; forum-aware posting)
 
 import 'dotenv/config';
-import http from 'http';
-import express from 'express';
 import Database from 'better-sqlite3';
 import cron from 'node-cron';
 import {
@@ -26,7 +24,6 @@ const {
   UHC_MISSING_MATERIALS_CHANNEL_ID,
   UHC_UHCMATERIALS_ROLE_ID,
   UHC_ALLOWED_FORUM_IDS = '1397268083642466374,1397270791175012453',
-  PORT = 10000,
 } = process.env;
 
 function t(x) { return (x || '').trim(); }
@@ -76,36 +73,6 @@ client.once('ready', () => {
 });
 client.on('error', (e) => console.error('[client error]', e));
 
-// -------- Keepalive /health --------
-const app = express();
-// Return 200 for HEAD /health (no body)
-app.head('/health', (_req, res) => {
-  res.status(200).end();
-});
-
-// Optional: also 200 for HEAD /
-app.head('/', (_req, res) => {
-  res.status(200).end();
-});
-
-// Keep GET / as 200 too (optional but handy)
-app.get('/', (_req, res) => {
-  res.status(200).send('ok');
-});
-
-// Existing GET /health (leave as-is or keep it minimal)
-app.get('/health', (_req, res) => {
-  // Avoid heavy work here; UptimeRobot just needs a 200
-  res.status(200).json({
-    service: 'UHCmaterialbot',
-    logged_in_as: client.user ? `${client.user.tag} (${client.user.id})` : null,
-    guilds: client.guilds?.cache?.size ?? 0,
-    ws_status: client.ws?.status ?? null,
-    ws_ping_ms: client.ws?.ping ?? null,
-  });
-});
-
-http.createServer(app).listen(PORT, () => console.log('HTTP keepalive listening on', PORT));
 
 // -------- Helpers --------
 function isInAllowedProjectThread(channel) {
