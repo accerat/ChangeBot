@@ -134,8 +134,8 @@ client.on('messageCreate', async (msg) => {
 
     const buttonLabel = doorList ? 'Open Doors Form (Pre-filled)' : 'Open Doors Form';
     const contentMsg = doorList
-      ? 'Let's file a UHC materials request. I found door IDs from your project template - click to open the pre-filled form.'
-      : 'Let's file a UHC materials request. Click the button to open the form.';
+      ? 'UHC materials request - I found door IDs from your project template. Click to open the pre-filled form.'
+      : 'UHC materials request - Click the button to open the form.';
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
