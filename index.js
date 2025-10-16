@@ -125,12 +125,31 @@ function parseDoorLines(raw) {
 // -------- Mention → Button --------
 client.on('messageCreate', async (msg) => {
   try {
-    if (msg.author.bot) return;
-    if (!msg.mentions.has(client.user)) return;
-    if (!isInAllowedProjectThread(msg.channel)) return;
+    console.log('[messageCreate] Message received from', msg.author.tag);
 
+    if (msg.author.bot) {
+      console.log('[messageCreate] Ignoring bot message');
+      return;
+    }
+
+    if (!msg.mentions.has(client.user)) {
+      console.log('[messageCreate] Bot not mentioned');
+      return;
+    }
+
+    console.log('[messageCreate] Bot mentioned! Checking thread...');
+    console.log('[messageCreate] Channel type:', msg.channel.type, 'Is thread?', msg.channel.isThread?.());
+    console.log('[messageCreate] Parent ID:', msg.channel.parentId, 'Allowed forums:', ALLOWED_FORUMS);
+
+    if (!isInAllowedProjectThread(msg.channel)) {
+      console.log('[messageCreate] Not in allowed project thread, ignoring');
+      return;
+    }
+
+    console.log('[messageCreate] In allowed thread! Fetching V3 template...');
     // Pre-fetch V3 template in background to check if available
     const doorList = await getFormattedDoorList(msg.channel.id);
+    console.log('[messageCreate] Door list:', doorList ? `Found ${doorList.split('\n').length} doors` : 'None found');
 
     const buttonLabel = doorList ? 'Open Doors Form (Pre-filled)' : 'Open Doors Form';
     const contentMsg = doorList
@@ -144,10 +163,12 @@ client.on('messageCreate', async (msg) => {
         .setStyle(ButtonStyle.Primary)
     );
 
+    console.log('[messageCreate] Sending reply...');
     await msg.reply({
       content: contentMsg,
       components: [row],
     });
+    console.log('[messageCreate] Reply sent successfully!');
   } catch (e) {
     console.error('[mention handler]', e);
   }
