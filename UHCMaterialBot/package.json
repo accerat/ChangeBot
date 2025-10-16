@@ -1,8 +1,8 @@
 {
-  "name": "changebot",
+  "name": "materialbot",
   "version": "1.0.0",
   "type": "module",
-  "description": "Multi-purpose change request tracking bot for Discord",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

@@ -1,4 +1,4 @@
-// index.js — ChangeBot (multi-type change request system with mention flow, modals, and forum-aware posting)
+// index.js — UHCmaterialbot (mention flow; single-field modal; forum-aware posting)
 
 import 'dotenv/config';
 import Database from 'better-sqlite3';
@@ -17,7 +17,6 @@ import {
   ButtonStyle,
   ChannelType,
 } from 'discord.js';
-import { getFormattedDoorList } from './utils/v3Templates.js';
 
 // -------- ENV --------
 const {
@@ -38,7 +37,7 @@ if (!TOKEN || !MISSING_CH_ID || !MATERIALS_ROLE_ID) {
   process.exit(1);
 }
 
-console.log('[boot] ChangeBot starting...');
+console.log('[boot] forum-aware UHCmaterialbot starting');
 
 // -------- DB --------
 const db = new Database('./uhc_materials.db');
@@ -70,7 +69,7 @@ const client = new Client({
 });
 
 client.once('ready', () => {
-  console.log(`[ready] ChangeBot online as ${client.user.tag}`);
+  console.log(`[ready] UHCmaterialbot online as ${client.user.tag}`);
 });
 client.on('error', (e) => console.error('[client error]', e));
 
@@ -88,7 +87,7 @@ function isInAllowedProjectThread(channel) {
   }
 }
 
-function openRequestModal(interaction, defaultValue = '') {
+function openRequestModal(interaction) {
   const modal = new ModalBuilder()
     .setCustomId('uhc_mat_modal')
     .setTitle('UHC Doors'); // <=45 chars
@@ -100,11 +99,6 @@ function openRequestModal(interaction, defaultValue = '') {
     .setRequired(true)
     // Keep placeholder <= ~100 chars to avoid string length errors
     .setPlaceholder('One per line: Door ID | Missing material(s). Ex: 102A | Closer arm + 4x #12 screws');
-
-  // Pre-populate with V3 template data if available
-  if (defaultValue) {
-    lines.setValue(defaultValue);
-  }
 
   modal.addComponents(new ActionRowBuilder().addComponents(lines));
   return interaction.showModal(modal); // return so caller can await/catch
@@ -125,50 +119,21 @@ function parseDoorLines(raw) {
 // -------- Mention → Button --------
 client.on('messageCreate', async (msg) => {
   try {
-    console.log('[messageCreate] Message received from', msg.author.tag);
-
-    if (msg.author.bot) {
-      console.log('[messageCreate] Ignoring bot message');
-      return;
-    }
-
-    if (!msg.mentions.has(client.user)) {
-      console.log('[messageCreate] Bot not mentioned');
-      return;
-    }
-
-    console.log('[messageCreate] Bot mentioned! Checking thread...');
-    console.log('[messageCreate] Channel type:', msg.channel.type, 'Is thread?', msg.channel.isThread?.());
-    console.log('[messageCreate] Parent ID:', msg.channel.parentId, 'Allowed forums:', ALLOWED_FORUMS);
-
-    if (!isInAllowedProjectThread(msg.channel)) {
-      console.log('[messageCreate] Not in allowed project thread, ignoring');
-      return;
-    }
-
-    console.log('[messageCreate] In allowed thread! Fetching V3 template...');
-    // Pre-fetch V3 template in background to check if available
-    const doorList = await getFormattedDoorList(msg.channel.id);
-    console.log('[messageCreate] Door list:', doorList ? `Found ${doorList.split('\n').length} doors` : 'None found');
-
-    const buttonLabel = doorList ? 'Open Doors Form (Pre-filled)' : 'Open Doors Form';
-    const contentMsg = doorList
-      ? 'UHC materials request - I found door IDs from your project template. Click to open the pre-filled form.'
-      : 'UHC materials request - Click the button to open the form.';
+    if (msg.author.bot) return;
+    if (!msg.mentions.has(client.user)) return;
+    if (!isInAllowedProjectThread(msg.channel)) return;
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('uhc_open_modal')
-        .setLabel(buttonLabel) // short label
+        .setLabel('Open Doors Form') // short label
         .setStyle(ButtonStyle.Primary)
     );
 
-    console.log('[messageCreate] Sending reply...');
     await msg.reply({
-      content: contentMsg,
+      content: 'Let’s file a UHC materials request. Click the button to open the form.',
       components: [row],
     });
-    console.log('[messageCreate] Reply sent successfully!');
   } catch (e) {
     console.error('[mention handler]', e);
   }
@@ -180,9 +145,7 @@ client.on('interactionCreate', async (interaction) => {
     // Button → open modal
     if (interaction.isButton() && interaction.customId === 'uhc_open_modal') {
       try {
-        // Fetch V3 template for this thread
-        const doorList = await getFormattedDoorList(interaction.channelId);
-        await openRequestModal(interaction, doorList);
+        await openRequestModal(interaction);
       } catch (e) {
         console.error('[button→modal error]', e);
         return interaction.reply({ content: `⚠️ Could not open form: ${e?.message || e}`, ephemeral: true });
