@@ -17,6 +17,7 @@ import {
   ButtonStyle,
   ChannelType,
 } from 'discord.js';
+import { getFormattedDoorList } from './utils/v3Templates.js';
 
 // -------- ENV --------
 const {
@@ -87,7 +88,7 @@ function isInAllowedProjectThread(channel) {
   }
 }
 
-function openRequestModal(interaction) {
+function openRequestModal(interaction, defaultValue = '') {
   const modal = new ModalBuilder()
     .setCustomId('uhc_mat_modal')
     .setTitle('UHC Doors'); // <=45 chars
@@ -99,6 +100,11 @@ function openRequestModal(interaction) {
     .setRequired(true)
     // Keep placeholder <= ~100 chars to avoid string length errors
     .setPlaceholder('One per line: Door ID | Missing material(s). Ex: 102A | Closer arm + 4x #12 screws');
+
+  // Pre-populate with V3 template data if available
+  if (defaultValue) {
+    lines.setValue(defaultValue);
+  }
 
   modal.addComponents(new ActionRowBuilder().addComponents(lines));
   return interaction.showModal(modal); // return so caller can await/catch
@@ -123,15 +129,23 @@ client.on('messageCreate', async (msg) => {
     if (!msg.mentions.has(client.user)) return;
     if (!isInAllowedProjectThread(msg.channel)) return;
 
+    // Pre-fetch V3 template in background to check if available
+    const doorList = await getFormattedDoorList(msg.channel.id);
+
+    const buttonLabel = doorList ? 'Open Doors Form (Pre-filled)' : 'Open Doors Form';
+    const contentMsg = doorList
+      ? 'Let's file a UHC materials request. I found door IDs from your project template - click to open the pre-filled form.'
+      : 'Let's file a UHC materials request. Click the button to open the form.';
+
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('uhc_open_modal')
-        .setLabel('Open Doors Form') // short label
+        .setLabel(buttonLabel) // short label
         .setStyle(ButtonStyle.Primary)
     );
 
     await msg.reply({
-      content: 'Let’s file a UHC materials request. Click the button to open the form.',
+      content: contentMsg,
       components: [row],
     });
   } catch (e) {
@@ -145,7 +159,9 @@ client.on('interactionCreate', async (interaction) => {
     // Button → open modal
     if (interaction.isButton() && interaction.customId === 'uhc_open_modal') {
       try {
-        await openRequestModal(interaction);
+        // Fetch V3 template for this thread
+        const doorList = await getFormattedDoorList(interaction.channelId);
+        await openRequestModal(interaction, doorList);
       } catch (e) {
         console.error('[button→modal error]', e);
         return interaction.reply({ content: `⚠️ Could not open form: ${e?.message || e}`, ephemeral: true });
