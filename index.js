@@ -14,6 +14,8 @@ import {
 } from 'discord.js';
 import { initDatabase } from './db/schema.js';
 import { CHANGE_TYPES, getChangeType } from './config/changeTypes.js';
+import { triggerRegeneration } from './excel/generator.js';
+import { syncToDrive, isDriveConfigured } from './excel/driveSync.js';
 
 // -------- ENV --------
 const {
@@ -219,6 +221,14 @@ client.on('interactionCreate', async (interaction) => {
 
           await interaction.editReply(`✅ Submitted as **${poNumber}**`);
         }
+
+        // Trigger Excel regeneration in background
+        triggerRegeneration(typeId).then(async (files) => {
+          if (isDriveConfigured() && files[typeId]) {
+            await syncToDrive(typeId, files[typeId]);
+          }
+        }).catch(e => console.error('[excel/drive]', e));
+
       } catch (e) {
         console.error('[submission error]', e);
         return interaction.editReply(`⚠️ Error: ${e?.message || e}`);
@@ -266,8 +276,17 @@ client.on('interactionCreate', async (interaction) => {
           components: interaction.message.components
         });
 
-        // TODO: Trigger Excel regeneration here
         console.log(`[status] Request ${requestId} → ${newStatus} by ${interaction.user.tag}`);
+
+        // Trigger Excel regeneration in background
+        const request = db.prepare(`SELECT type FROM requests WHERE id = ?`).get(requestId);
+        if (request) {
+          triggerRegeneration(request.type).then(async (files) => {
+            if (isDriveConfigured() && files[request.type]) {
+              await syncToDrive(request.type, files[request.type]);
+            }
+          }).catch(e => console.error('[excel/drive]', e));
+        }
       } catch (e) {
         console.error('[status update error]', e);
         return interaction.reply({ content: `⚠️ Error updating status: ${e?.message || e}`, ephemeral: true });

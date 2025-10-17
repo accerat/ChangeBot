@@ -101,6 +101,12 @@ export function getExcelColumns() {
  */
 export function formatForExcel(request, poNumber) {
   const data = JSON.parse(request.data);
+
+  // Safety check - if no entries, return empty array
+  if (!data.entries || !Array.isArray(data.entries)) {
+    return [];
+  }
+
   return data.entries.map(entry => ({
     po_number: poNumber,
     status: request.status,
