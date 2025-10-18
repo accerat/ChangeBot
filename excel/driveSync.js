@@ -64,11 +64,10 @@ export async function syncToDrive(typeId, filePath) {
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     };
 
-    if (!existingFileId) {
-      // Add to folder if specified
-      if (DRIVE_FOLDER_ID) {
-        fileMetadata.parents = [DRIVE_FOLDER_ID];
-      }
+    if (!existingFileId && DRIVE_FOLDER_ID) {
+      // Add to folder - REQUIRED for service accounts
+      fileMetadata.parents = [DRIVE_FOLDER_ID];
+      console.log(`[drive] Setting parent folder: ${DRIVE_FOLDER_ID}`);
     }
 
     const media = {
