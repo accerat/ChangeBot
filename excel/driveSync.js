@@ -20,25 +20,26 @@ const FILE_ID_MAP = {
  * @returns {Promise<object>} Google Drive API client
  */
 async function getDriveClient() {
-  const credentialsPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH;
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
-  if (!credentialsPath) {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_PATH not configured in .env');
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('OAuth2 credentials not configured in .env (GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_OAUTH_REFRESH_TOKEN)');
   }
 
-  if (!fs.existsSync(credentialsPath)) {
-    throw new Error(`Service account file not found: ${credentialsPath}`);
-  }
+  const oauth2Client = new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    'http://localhost' // redirect URI (not used for refresh token flow)
+  );
 
-  const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/drive']
+  // Set the refresh token
+  oauth2Client.setCredentials({
+    refresh_token: refreshToken
   });
 
-  const authClient = await auth.getClient();
-  const drive = google.drive({ version: 'v3', auth: authClient });
+  const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
   return drive;
 }
@@ -152,5 +153,5 @@ export async function syncAllToDrive(filePaths) {
  * @returns {boolean} True if Drive sync is available
  */
 export function isDriveConfigured() {
-  return !!process.env.GOOGLE_SERVICE_ACCOUNT_PATH;
+  return !!(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET && process.env.GOOGLE_OAUTH_REFRESH_TOKEN);
 }

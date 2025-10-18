@@ -27,3 +27,4 @@ google-credentials.json
 
 # Test scripts
 test-excel.js
+excel/setup-oauth.js
