@@ -16,6 +16,7 @@ import { initDatabase } from './db/schema.js';
 import { CHANGE_TYPES, getChangeType } from './config/changeTypes.js';
 import { triggerRegeneration } from './excel/generator.js';
 import { syncToDrive, isDriveConfigured } from './excel/driveSync.js';
+import { backupDatabase } from './utils/driveBackup.js';
 
 // -------- ENV --------
 const {
@@ -313,6 +314,15 @@ cron.schedule('0 12,18 * * *', async () => {
     console.error('[reminder]', e);
   }
 }, { timezone: 'America/Chicago' });
+
+// -------- Database Backup every 5 minutes --------
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    await backupDatabase();
+  } catch (e) {
+    console.error('[backup]', e);
+  }
+});
 
 // -------- Login --------
 client.login(TOKEN);
