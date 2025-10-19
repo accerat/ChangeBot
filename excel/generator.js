@@ -1,9 +1,10 @@
 // excel/generator.js
 // Generate Excel files for each change type
+// ARCHITECTURAL PRINCIPLE: Uses Drive-based database
 
 import ExcelJS from 'exceljs';
 import { CHANGE_TYPES } from '../config/changeTypes.js';
-import { initDatabase } from '../db/schema.js';
+import { initDatabase } from '../db/driveDatabase.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -33,7 +34,7 @@ export async function generateExcelForType(typeId, db) {
   ensureOutputDir();
 
   // Get all requests for this type
-  const requests = db.prepare(`
+  const requests = await db.prepare(`
     SELECT * FROM requests
     WHERE type = ?
     ORDER BY created_at DESC
@@ -94,7 +95,7 @@ export async function generateExcelForType(typeId, db) {
  * @returns {Promise<object>} Map of typeId -> filePath
  */
 export async function generateAllExcels() {
-  const db = initDatabase('./uhc_materials.db');
+  const db = initDatabase(); // Drive-based database (no local file)
   const results = {};
 
   for (const changeType of CHANGE_TYPES) {
@@ -117,7 +118,7 @@ export async function generateAllExcels() {
 export async function triggerRegeneration(typeId = null) {
   try {
     if (typeId) {
-      const db = initDatabase('./uhc_materials.db');
+      const db = initDatabase(); // Drive-based database (no local file)
       const filePath = await generateExcelForType(typeId, db);
       console.log(`[excel] Regenerated ${typeId}: ${filePath}`);
       return { [typeId]: filePath };

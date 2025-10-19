@@ -1,0 +1,19 @@
+{
+  "requests": [
+    {
+      "id": 1,
+      "type": "materials",
+      "status": "pending",
+      "guild_id": "1396930021817581732",
+      "project_thread_id": "1403032289734299648",
+      "project_title": "Spring, tx",
+      "requested_by": "394945913807962112",
+      "data": "[{\"door\":\"151C\",\"materials\":\"posilock\"}]",
+      "destination_msg_id": "1406137601936592946",
+      "completed_at": null,
+      "completed_by": null,
+      "created_at": "2025-08-16 04:48:47"
+    }
+  ],
+  "_nextId": 2
+}

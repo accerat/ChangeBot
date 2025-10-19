@@ -1,4 +1,6 @@
 // index.js — ChangeBot (multi-type change request system)
+// ARCHITECTURAL PRINCIPLE: Google Drive is the PRIMARY database
+// Local SQLite is NOT used - all reads/writes go directly to Drive
 
 import 'dotenv/config';
 import cron from 'node-cron';
@@ -12,11 +14,10 @@ import {
   InteractionType,
   ChannelType,
 } from 'discord.js';
-import { initDatabase } from './db/schema.js';
+import { initDatabase } from './db/driveDatabase.js';
 import { CHANGE_TYPES, getChangeType } from './config/changeTypes.js';
 import { triggerRegeneration } from './excel/generator.js';
 import { syncToDrive, isDriveConfigured } from './excel/driveSync.js';
-import { backupDatabase } from './utils/driveBackup.js';
 
 // -------- ENV --------
 const {
@@ -42,7 +43,7 @@ if (!TOKEN || !MISSING_CH_ID || !MATERIALS_ROLE_ID) {
 console.log('[boot] ChangeBot starting...');
 
 // -------- DB --------
-const db = initDatabase('./uhc_materials.db');
+const db = initDatabase(); // Drive-based database (no local file)
 
 // -------- Client --------
 const client = new Client({
@@ -152,7 +153,7 @@ client.on('interactionCreate', async (interaction) => {
           VALUES (@type, @status, @guild_id, @project_thread_id, @project_title, @requested_by, @data)
         `);
 
-        const result = insertStmt.run({
+        const result = await insertStmt.run({
           type: typeId,
           status: 'pending',
           guild_id: interaction.guildId,
@@ -206,7 +207,7 @@ client.on('interactionCreate', async (interaction) => {
             },
           });
 
-          db.prepare(`UPDATE requests SET destination_msg_id=@tid WHERE id=@rid`)
+          await db.prepare(`UPDATE requests SET destination_msg_id=@tid WHERE id=@rid`)
             .run({ tid: thread.id, rid: rowId });
 
           await interaction.editReply(`✅ Submitted to **${dest.name}** as **${poNumber}**`);
@@ -217,7 +218,7 @@ client.on('interactionCreate', async (interaction) => {
             components: [statusRow]
           });
 
-          db.prepare(`UPDATE requests SET destination_msg_id=@mid WHERE id=@rid`)
+          await db.prepare(`UPDATE requests SET destination_msg_id=@mid WHERE id=@rid`)
             .run({ mid: msg.id, rid: rowId });
 
           await interaction.editReply(`✅ Submitted as **${poNumber}**`);
@@ -254,7 +255,7 @@ client.on('interactionCreate', async (interaction) => {
           WHERE id = @id
         `);
 
-        updateStmt.run({
+        await updateStmt.run({
           status: newStatus,
           completed_at: (newStatus === 'completed' || newStatus === 'cancelled') ? now : null,
           completed_by: (newStatus === 'completed' || newStatus === 'cancelled') ? interaction.user.id : null,
@@ -280,7 +281,7 @@ client.on('interactionCreate', async (interaction) => {
         console.log(`[status] Request ${requestId} → ${newStatus} by ${interaction.user.tag}`);
 
         // Trigger Excel regeneration in background
-        const request = db.prepare(`SELECT type FROM requests WHERE id = ?`).get(requestId);
+        const request = await db.prepare(`SELECT type FROM requests WHERE id = ?`).get(requestId);
         if (request) {
           triggerRegeneration(request.type).then(async (files) => {
             if (isDriveConfigured() && files[request.type]) {
@@ -314,15 +315,6 @@ cron.schedule('0 12,18 * * *', async () => {
     console.error('[reminder]', e);
   }
 }, { timezone: 'America/Chicago' });
-
-// -------- Database Backup every 5 minutes --------
-cron.schedule('*/5 * * * *', async () => {
-  try {
-    await backupDatabase();
-  } catch (e) {
-    console.error('[backup]', e);
-  }
-});
 
 // -------- Login --------
 client.login(TOKEN);
