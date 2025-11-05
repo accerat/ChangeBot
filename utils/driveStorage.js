@@ -3,6 +3,7 @@
 // Local files are NOT used - all reads/writes go directly to Drive
 
 import { google } from 'googleapis';
+import { Readable } from 'stream';
 
 const DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || null;
 
@@ -87,7 +88,7 @@ export async function saveDatabaseToDrive(data) {
 
     const media = {
       mimeType: 'application/json',
-      body: require('stream').Readable.from([buffer])
+      body: Readable.from([buffer])
     };
 
     let response;
