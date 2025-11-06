@@ -309,10 +309,16 @@ client.on('interactionCreate', async (interaction) => {
 // -------- Reminders at 12:00 & 18:00 CT --------
 cron.schedule('0 12,18 * * *', async () => {
   try {
-    const dest = await client.channels.fetch(MISSING_CH_ID);
-    if (dest?.type === ChannelType.GuildForum) return; // Skip for forums
-    if (dest?.isTextBased()) {
-      await dest.send(`⏰ Reminder: Please review open change requests. <@&${MATERIALS_ROLE_ID}>`);
+    // Send reminder to materials channel
+    const materialsDest = await client.channels.fetch(MISSING_CH_ID);
+    if (materialsDest?.type !== ChannelType.GuildForum && materialsDest?.isTextBased()) {
+      await materialsDest.send(`⏰ Reminder: Please review open materials change requests. <@&${MATERIALS_ROLE_ID}>`);
+    }
+
+    // Send reminder to project-change-tracking channel
+    const projectChangeDest = await client.channels.fetch(PROJECT_CHANGE_CH_ID);
+    if (projectChangeDest?.type !== ChannelType.GuildForum && projectChangeDest?.isTextBased()) {
+      await projectChangeDest.send(`⏰ Reminder: Please review open schedule and scope change requests. <@&${MATERIALS_ROLE_ID}>`);
     }
   } catch (e) {
     console.error('[reminder]', e);
