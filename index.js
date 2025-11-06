@@ -23,6 +23,7 @@ import { syncToDrive, isDriveConfigured } from './excel/driveSync.js';
 const {
   UHC_DISCORD_TOKEN,
   UHC_MISSING_MATERIALS_CHANNEL_ID,
+  PROJECT_CHANGE_TRACKING_CHANNEL_ID,
   UHC_UHCMATERIALS_ROLE_ID,
   MLB_OFFICE_ROLE_ID,
   UHC_ALLOWED_FORUM_IDS = '1397268083642466374,1397270791175012453',
@@ -31,11 +32,12 @@ const {
 function t(x) { return (x || '').trim(); }
 const TOKEN = t(UHC_DISCORD_TOKEN);
 const MISSING_CH_ID = t(UHC_MISSING_MATERIALS_CHANNEL_ID);
+const PROJECT_CHANGE_CH_ID = t(PROJECT_CHANGE_TRACKING_CHANNEL_ID);
 const MATERIALS_ROLE_ID = t(UHC_UHCMATERIALS_ROLE_ID);
 const MLB_OFFICE_ID = t(MLB_OFFICE_ROLE_ID);
 const ALLOWED_FORUMS = (UHC_ALLOWED_FORUM_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
 
-if (!TOKEN || !MISSING_CH_ID || !MATERIALS_ROLE_ID) {
+if (!TOKEN || !MISSING_CH_ID || !PROJECT_CHANGE_CH_ID || !MATERIALS_ROLE_ID) {
   console.error('[config] Missing required env vars.');
   process.exit(1);
 }
@@ -174,8 +176,9 @@ client.on('interactionCreate', async (interaction) => {
 
         const linkBack = `https://discord.com/channels/${interaction.guildId}/${interaction.channelId}`;
 
-        // Fetch destination channel
-        const dest = await client.channels.fetch(MISSING_CH_ID);
+        // Determine destination channel based on change type
+        const destChannelId = typeId === 'materials' ? MISSING_CH_ID : PROJECT_CHANGE_CH_ID;
+        const dest = await client.channels.fetch(destChannelId);
 
         // Create status buttons
         const statusRow = new ActionRowBuilder().addComponents(
